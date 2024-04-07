@@ -35,6 +35,80 @@
           "name": "颜色盘"
         }
       ]
+    },
+    "configuration": {
+      "title": "Color Highlight",
+      "properties": {
+        "color-to-see.enable": {
+          "default": true,
+          "description": "Controls if plugin is enabled",
+          "type": "boolean"
+        },
+        "color-to-see.languages": {
+          "default": [
+            "*"
+          ],
+          "description": "An array of language ids which should be highlighted by Color Highlight. \"*\" to trigger on any language; Prepend language id with \"!\" to exclude the language (i.e \"!typescript\", \"!javascript\")",
+          "type": "array"
+        },
+        "color-to-see.matchWords": {
+          "default": false,
+          "description": "Highlight color words in all files (grey, green, etc.)",
+          "type": "boolean"
+        },
+        "color-to-see.useARGB": {
+          "default": false,
+          "description": "Highlight HEX values using ARGB instead of RGBA (default)",
+          "type": "boolean"
+        },
+        "color-to-see.matchRgbWithNoFunction": {
+          "default": false,
+          "description": "Highlight rgb without functions like rgb() ('255, 255, 255', [255, 255, 255], '255 255 255', etc.)",
+          "type": "boolean"
+        },
+        "color-to-see.rgbWithNoFunctionLanguages": {
+          "default": [
+            "*"
+          ],
+          "description": "An array of language ids which should be highlighted by Color Highlight with the rgbWithNoFunction pattern. \"*\" to trigger on any language; Prepend language id with \"!\" to exclude the language (i.e \"!typescript\", \"!javascript\")",
+          "type": "array"
+        },
+        "color-to-see.matchHslWithNoFunction": {
+          "default": false,
+          "description": "Highlight hsl without functions like hsl() ('255, 100%, 80%', [255, 100%, 80%], '255 100% 80%', etc.)",
+          "type": "boolean"
+        },
+        "color-to-see.hslWithNoFunctionLanguages": {
+          "default": [
+            "*"
+          ],
+          "description": "An array of language ids which should be highlighted by Color Highlight with the rgbWithNoFunction pattern. \"*\" to trigger on any language; Prepend language id with \"!\" to exclude the language (i.e \"!typescript\", \"!javascript\")",
+          "type": "array"
+        },
+        "color-to-see.markerType": {
+          "default": "background",
+          "description": "Style of the highlight. Can be 'dot-before', 'dot-after', 'foreground', 'background', 'outline', 'underline'",
+          "type": "string",
+          "enum": [
+            "dot-before",
+            "dot-after",
+            "foreground",
+            "background",
+            "outline",
+            "underline"
+          ]
+        },
+        "color-to-see.markRuler": {
+          "default": true,
+          "description": "Highlight colors on the ruler (scroll bar), true/false",
+          "type": "boolean"
+        },
+        "color-to-see.sass.includePaths": {
+          "default": [],
+          "description": "Array of absolute paths to search while perform file lookups.",
+          "type": "array"
+        }
+      }
     }
   },
   "scripts": {
@@ -49,17 +123,22 @@
     "test": "vscode-test"
   },
   "devDependencies": {
-    "@types/vscode": "^1.87.0",
     "@types/mocha": "^10.0.6",
     "@types/node": "18.x",
+    "@types/vscode": "^1.87.0",
     "@typescript-eslint/eslint-plugin": "^7.4.0",
     "@typescript-eslint/parser": "^7.4.0",
-    "eslint": "^8.57.0",
-    "typescript": "^5.3.3",
-    "ts-loader": "^9.5.1",
-    "webpack": "^5.91.0",
-    "webpack-cli": "^5.1.4",
     "@vscode/test-cli": "^0.0.8",
-    "@vscode/test-electron": "^2.3.9"
+    "@vscode/test-electron": "^2.3.9",
+    "eslint": "^8.57.0",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.3.3",
+    "webpack": "^5.91.0",
+    "webpack-cli": "^5.1.4"
+  },
+  "dependencies": {
+    "color": "^4.2.3",
+    "color-name": "^2.0.0",
+    "file-importer": "^1.0.0"
   }
 }
