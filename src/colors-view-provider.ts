@@ -2,8 +2,6 @@ import * as vscode from 'vscode';
 import { generateMainDiv } from './views';
 import { DocumentColor } from './document-color';
 
-let instanceMap = [];
-
 export type ColorItem = {
   start: number;
   end: number;
@@ -20,7 +18,12 @@ class ColorsViewProvider implements vscode.WebviewViewProvider {
 
   private _view?: vscode.WebviewView;
 
+  // 平铺的颜色信息
   public colorInfos: ColorItem[] = [];
+
+  // 按照文件记录的颜色信息
+  public colorMapArray: ColorMapping[] = [];
+  private instanceMap = [];
 
   constructor(private readonly _extensionUri: vscode.Uri) {}
 
@@ -31,9 +34,9 @@ class ColorsViewProvider implements vscode.WebviewViewProvider {
   ) {
     this._view = webviewView;
 
-    this.colorInfos = flatColorItem(await collectColorsInDocuments(this._view));
+    this.colorMapArray = await this.collectColorsInDocuments();
 
-    console.log('🚀 ~ ColorsViewProvider ~ colorList:', this.colorInfos);
+    this.updateColorInfosByMap();
 
     webviewView.webview.options = {
       // Allow scripts in the webview
@@ -45,18 +48,9 @@ class ColorsViewProvider implements vscode.WebviewViewProvider {
 
     // 接收点击事件
     webviewView.webview.onDidReceiveMessage((message) => {
-      console.log(
-        '🚀 ~ ColorsViewProvider ~ webviewView.webview.onDidReceiveMessage ~ message:',
-        message
-      );
       switch (message.command) {
         case 'gotoColor':
-          console.log(22222);
           this.gotoColor(message.file, message.start, message.end);
-          break;
-        case 'update':
-          console.log(111, 'update', message.colorInfo);
-          // this.colorInfos  = flatColorItem()
           break;
       }
     });
@@ -85,7 +79,7 @@ class ColorsViewProvider implements vscode.WebviewViewProvider {
 					and only allow scripts that have a specific nonce.
 					(See the 'webview-sample' extension sample for img-src content security policy examples)
 				-->
-				<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';">
+				<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline' vscode-resource:; script-src 'nonce-${nonce}';">
 
 				<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -115,6 +109,73 @@ class ColorsViewProvider implements vscode.WebviewViewProvider {
       });
     });
   }
+
+  private updateColorInfosByMap() {
+    this.colorInfos = flatColorItem(this.colorMapArray);
+  }
+
+  public async updateColorInfos(document) {
+    // 编辑器文本变更，局部更新颜色视图
+    const instance = await this.findOrCreateInstance(document);
+
+    const colorDocumentItem = await instance.onUpdate();
+    const index = this.instanceMap.indexOf(instance);
+    this.colorMapArray[index] = colorDocumentItem;
+
+    this.updateColorInfosByMap();
+
+    // 更新视图
+    this._view.webview.html = this._getHtmlForWebview(this._view.webview);
+  }
+
+  private async collectColorsInDocuments() {
+    const files = await vscode.workspace.findFiles(
+      '**/*',
+      '**/node_modules/**'
+    );
+    const colorsInfos = [];
+
+    for (const file of files) {
+      const document = await vscode.workspace.openTextDocument(file);
+      colorsInfos.push(await this.collectColorsInDocument(document));
+    }
+
+    return colorsInfos;
+  }
+
+  private async collectColorsInDocument(document) {
+    if (document) {
+      const instance = await this.findOrCreateInstance(document);
+      return instance.onUpdate();
+    }
+  }
+
+  /**
+   * Finds relevant instance of the DocumentColorer or creates a new one
+   *
+   * @param {vscode.TextDocument} document
+   * @returns {DocumentColor}
+   */
+  private async findOrCreateInstance(document) {
+    if (!document) {
+      return {};
+    }
+
+    const found = this.instanceMap.find(
+      ({ document: refDoc }) => refDoc === document
+    );
+
+    if (!found) {
+      const instance = new DocumentColor(
+        document,
+        {},
+        this.updateColorInfos.bind(this)
+      );
+      this.instanceMap.push(instance);
+    }
+
+    return found || this.instanceMap[this.instanceMap.length - 1];
+  }
 }
 
 function getNonce() {
@@ -125,46 +186,6 @@ function getNonce() {
     text += possible.charAt(Math.floor(Math.random() * possible.length));
   }
   return text;
-}
-
-async function collectColorsInDocuments(_view: vscode.WebviewView) {
-  const files = await vscode.workspace.findFiles('**/*', '**/node_modules/**');
-  const colorsInfos = [];
-
-  for (const file of files) {
-    const document = await vscode.workspace.openTextDocument(file);
-    colorsInfos.push(await collectColorsInDocument(_view, document));
-  }
-  return colorsInfos;
-}
-
-async function collectColorsInDocument(_view, document) {
-  if (document) {
-    const instance = await findOrCreateInstance(_view, document);
-    return instance.onUpdate();
-  }
-}
-
-/**
- * Finds relevant instance of the DocumentColorer or creates a new one
- *
- * @param {vscode.Webview} _view
- * @param {vscode.TextDocument} document
- * @returns {DocumentColor}
- */
-async function findOrCreateInstance(_view, document) {
-  if (!document) {
-    return {};
-  }
-
-  const found = instanceMap.find(({ document: refDoc }) => refDoc === document);
-
-  if (!found) {
-    const instance = new DocumentColor(_view, document, {});
-    instanceMap.push(instance);
-  }
-
-  return found || instanceMap[instanceMap.length - 1];
 }
 
 const flatColorItem = (colorList: ColorMapping[]) => {

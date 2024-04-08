@@ -18,14 +18,15 @@ const colorWordsLanguages = ['css', 'scss', 'sass', 'less', 'stylus'];
 export class DocumentColor {
   /**
    * Creates an instance of DocumentColor.
-   * @param {vscode.WebviewView} _view
+   * @param {any} updateColorInfos
    * @param {TextDocument} document
    * @param {any} viewConfig
    *
    * @memberOf DocumentColor
    */
-  constructor(_view, document, viewConfig) {
+  constructor(document, viewConfig, updateColorInfos) {
     this.disposed = false;
+    this._updateColorInfos = updateColorInfos;
 
     this.document = document;
     this.strategies = [findColorFunctionsInText, findHwb];
@@ -118,20 +119,14 @@ export class DocumentColor {
         break;
     }
 
-    this.initialize(_view, viewConfig);
+    this.initialize(viewConfig, this._updateColorInfos);
   }
 
-  initialize(_view, viewConfig) {
+  initialize(viewConfig, _updateColorInfos) {
     this.decorations = new DecorationMap(viewConfig);
 
     this.listner = workspace.onDidChangeTextDocument(({ document }) => {
-      if (_view) {
-        _view.webview.postMessage({
-          command: 'update',
-          colorInfo: this.onUpdate(document)
-        });
-      }
-      return this.onUpdate(document);
+      return _updateColorInfos(document);
     });
   }
 
@@ -189,35 +184,6 @@ export class DocumentColor {
       if (this.disposed) {
         return false;
       }
-
-      // 缓存
-      // const updateStack = this.decorations.keys().reduce((state, color) => {
-      //   state[color] = [];
-      //   return state;
-      // }, {});
-
-      // for (const color in colorRanges) {
-      //   updateStack[color] = colorRanges[color].map((item) => {
-      //     return new Range(
-      //       this.document.positionAt(item.start),
-      //       this.document.positionAt(item.end)
-      //     );
-      //   });
-      // }
-
-      // for (const color in updateStack) {
-      //   const decoration = this.decorations.get(color);
-
-      //   window.visibleTextEditors
-      //     .filter(({ document }) => document.uri === this.document.uri)
-      //     .forEach((editor) =>
-      //       editor.setDecorations(decoration, updateStack[color])
-      //     );
-      // }
-      console.log(
-        '🚀 ~ DocumentColor ~ updateRange ~ colorRanges:',
-        colorRanges
-      );
 
       return colorRanges;
     } catch (error) {

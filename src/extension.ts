@@ -1,7 +1,5 @@
 import * as vscode from 'vscode';
 import ColorsViewProvider from './colors-view-provider';
-import * as fs from 'fs';
-import * as path from 'path';
 
 let config: any;
 
@@ -76,22 +74,3 @@ export function activate(context: vscode.ExtensionContext) {
   //   )
   // );
 }
-
-// export async function runHighlightEditorCommand(editor, edit, document) {
-//   if (!document) {
-//     document = editor && editor.document;
-//   }
-
-//   return doHighlight([document]);
-// }
-
-// async function doHighlight(documents = []) {
-//   if (documents.length && documents[0]) {
-//     const instance = new DocumentHighlight(documents[0], config);
-
-//     const colorRanges = await instance.onUpdate();
-//     console.log('🚀 ~ doHighlight ~ colorRanges:', colorRanges);
-//     // ColorsViewProvider.colorList = colorRanges.map((item) => item.color);
-//     // ColorsViewProvider.colorList = ['#111', '#eee', '#333', '#fff'];
-//   }
-// }
