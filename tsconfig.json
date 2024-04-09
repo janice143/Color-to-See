@@ -3,7 +3,6 @@
     "module": "Node16",
     "target": "ES2022",
     "lib": ["ES2022"],
-    "allowJs": true,
     "sourceMap": true,
     "rootDir": "src"
     // "strict": true /* enable all strict type-checking options */
