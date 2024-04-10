@@ -18,18 +18,20 @@ const colorWordsLanguages = ['css', 'scss', 'sass', 'less', 'stylus'];
 export class DocumentColor {
   /**
    * Creates an instance of DocumentColor.
-   * @param {any} updateColorInfos
    * @param {TextDocument} document
    * @param {any} viewConfig
    *
    * @memberOf DocumentColor
    */
-  constructor(document, viewConfig, updateColorInfos) {
-    this.disposed = false;
-    this._updateColorInfos = updateColorInfos;
-
+  constructor(document, viewConfig, createInstance) {
     this.document = document;
     this.strategies = [findColorFunctionsInText, findHwb];
+    // 文本是否更新了
+    this.changed = false;
+    // 文本是否删除了
+    this.disposed = false;
+
+    this._createInstance = createInstance;
 
     if (viewConfig.useARGB == true) {
       this.strategies.push(findHexARGB);
@@ -119,15 +121,45 @@ export class DocumentColor {
         break;
     }
 
-    this.initialize(viewConfig, this._updateColorInfos);
+    this.initialize(viewConfig);
   }
 
-  initialize(viewConfig, _updateColorInfos) {
+  initialize(viewConfig) {
     this.decorations = new DecorationMap(viewConfig);
 
     this.listner = workspace.onDidChangeTextDocument(({ document }) => {
-      return _updateColorInfos(document);
+      //  新增的文件，如果编辑了，也要统计
+      // BUGFIX: 复制过来的文件或者文件夹，如果没改动，目前无法更新
+      this._createInstance(document);
+
+      // 更新document的变更状态
+      this.changed = true;
     });
+
+    workspace.onDidDeleteFiles((event) => {
+      event.files.forEach((file) => {
+        if (file.fsPath === this.document.uri.fsPath) {
+          this.disposed = true;
+        }
+      });
+    });
+
+    // 文件新增
+    // workspace.onDidCreateFiles((event) => {
+    //   event.files.forEach(async (file) => {
+
+    //     const document = await vscode.workspace.openTextDocument(file);
+    //     this._createInstance(document);
+
+    //     // if (file.fsPath !== this.document.uri.fsPath) {
+    //     //   console.log('🚀 ~ DocumentColor ~ event.files.forEach ~ file:', file);
+    //     //   // this.new = true;
+    //     //   // this.changed = true;
+    //     //   this._createInstance(this.document);
+
+    //     // }
+    //   });
+    // });
   }
 
   /**

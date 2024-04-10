@@ -52,6 +52,14 @@ class ColorsViewProvider implements vscode.WebviewViewProvider {
         case 'gotoColor':
           this.gotoColor(message.file, message.start, message.end);
           break;
+        case 'refresh':
+          this.doUpdateColorInfos().finally(() => {
+            webviewView.webview.postMessage({
+              command: 'refreshEnd'
+            });
+          });
+
+          break;
       }
     });
   }
@@ -102,10 +110,6 @@ class ColorsViewProvider implements vscode.WebviewViewProvider {
           editor.document.positionAt(start),
           editor.document.positionAt(end)
         );
-        // new vscode.Range(
-        //   editor.document.positionAt(start),
-        //   editor.document.positionAt(end)
-        // );
       });
     });
   }
@@ -114,24 +118,41 @@ class ColorsViewProvider implements vscode.WebviewViewProvider {
     this.colorInfos = flatColorItem(this.colorMapArray);
   }
 
-  public async updateColorInfos(document) {
-    // 编辑器文本变更，局部更新颜色视图
-    const instance = await this.findOrCreateInstance(document);
+  private async doUpdateColorInfos() {
+    try {
+      // 收集变更的document，局部更新颜色视图
+      for (let index = 0; index < this.instanceMap.length; index++) {
+        const instance = this.instanceMap[index];
 
-    const colorDocumentItem = await instance.onUpdate();
-    const index = this.instanceMap.indexOf(instance);
-    this.colorMapArray[index] = colorDocumentItem;
+        if (instance.disposed) {
+          // 删除对应的map
+          this.instanceMap.splice(index, 1);
+          this.colorMapArray.splice(index, 1);
+          continue;
+        }
 
-    this.updateColorInfosByMap();
+        if (instance.changed) {
+          const colorDocumentItem = await instance.onUpdate();
+          this.colorMapArray[index] = colorDocumentItem;
+          // 恢复
+          instance.changed = false;
+        }
+      }
 
-    // 更新视图
-    this._view.webview.html = this._getHtmlForWebview(this._view.webview);
+      this.updateColorInfosByMap();
+
+      // 更新视图
+      this._view.webview.html = this._getHtmlForWebview(this._view.webview);
+      return Promise.resolve();
+    } catch {
+      return Promise.reject();
+    }
   }
 
   private async collectColorsInDocuments() {
     const files = await vscode.workspace.findFiles(
       '**/*',
-      '**/node_modules/**'
+      '{**/node_modules/**,src/**/*}'
     );
     const colorsInfos = [];
 
@@ -156,7 +177,7 @@ class ColorsViewProvider implements vscode.WebviewViewProvider {
    * @param {vscode.TextDocument} document
    * @returns {DocumentColor}
    */
-  private async findOrCreateInstance(document) {
+  public async findOrCreateInstance(document) {
     if (!document) {
       return {};
     }
@@ -169,8 +190,9 @@ class ColorsViewProvider implements vscode.WebviewViewProvider {
       const instance = new DocumentColor(
         document,
         {},
-        this.updateColorInfos.bind(this)
+        this.findOrCreateInstance.bind(this)
       );
+
       this.instanceMap.push(instance);
     }
 

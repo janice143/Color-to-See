@@ -82,4 +82,102 @@ body {
       text-shadow: 0 1px rgba(0, 0, 0, 0.4);
     }
   }
+
+  .refresh-btn-container {
+    font-size: 12px;
+    font-weight: 600;
+
+    .btn {
+      align-items: center;
+      color: white;
+      cursor: pointer;
+      display: inline-flex;
+      justify-content: center;
+      padding: 10px;
+    }
+
+    .btn b {
+      font-weight: normal;
+    }
+
+    .btn span {
+      display: none;
+    }
+
+    .btn.btn--loading {
+      font-size: 0;
+    }
+
+    .btn.btn--loading span {
+      display: flex;
+    }
+
+    .btn.btn--loading span b {
+      /* 下面是展开的 dot-animation 混合 */
+      animation-direction: alternate;
+      animation-duration: 0.5s;
+      animation-fill-mode: none;
+      animation-iteration-count: infinite;
+      animation-name: stretch;
+      animation-play-state: running;
+      animation-timing-function: ease-out;
+      border-radius: 100%;
+      display: block;
+      height: 10px;
+      margin: 0 1px;
+      width: 10px;
+      /* dot-animation 展开结束 */
+    }
+
+    .btn.btn--loading span b {
+      animation-delay: 0.1s;
+      margin: 0 5px;
+    }
+
+    .btn.btn--loading span b:first-child {
+      animation-delay: 0s;
+      margin: 0;
+    }
+
+    .btn.btn--loading span b:last-child {
+      animation-delay: 0.2s;
+      margin: 0;
+    }
+  }
+
+  .toast {
+    background: #333;
+    border-radius: 0 0 4px 4px;
+    padding: 10px;
+    font-size: 12px;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.32);
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translate(-50%, -100%);
+    transition: transform 0.15s ease-in-out;
+  }
+
+  .toast--active {
+    transform: translate(-50%, 0);
+  }
+
+  .toast--error {
+    background: #ee5253;
+  }
+}
+
+@keyframes stretch {
+  0% {
+    transform: scale(0.5);
+    background-color: #b5ddf0; /* 假设的 $icy-200 替换值 */
+  }
+  50% {
+    background-color: #cfe9f6; /* 假设的 $icy-100 替换值 */
+  }
+  100% {
+    transform: scale(1);
+    background-color: #ffffff; /* 假设的 $white 替换值 */
+  }
 }
