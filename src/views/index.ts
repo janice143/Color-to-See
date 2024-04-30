@@ -1,11 +1,15 @@
-import { ColorItem } from '../colors-view-provider';
+import { ColorItem } from '../types';
 
 export const generateMainDiv = (colorList: ColorItem[] = []) =>
   alertWrapper(
     `<div>
   ${refreshBtn()}
   <div class="color-grid">
-  ${colorList.map((item) => singleColorDiv(item)).join('')}
+  ${
+    !colorList.length
+      ? emptyContent()
+      : colorList.map((item) => singleColorDiv(item)).join('')
+  }
   </div>
   <div class="selected-color-container">
     <div class="selected-color-header">
@@ -35,7 +39,7 @@ const dropDownSelector = () => `
 const refreshBtn = () => `
 <div class="refresh-btn-container">
   <a class="btn">
-      Refresh
+      点击刷新
       <span>
           <b></b>
           <b></b>
@@ -49,5 +53,8 @@ const alertWrapper = (div) => `
 <div class="container">
 ${div}
 </div>
- 
 `;
+
+const emptyContent = () => {
+  return '项目中没有颜色~';
+};

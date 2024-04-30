@@ -1,29 +1,25 @@
-'use strict';
-import { workspace, window, Range, Webview } from 'vscode';
-import { findScssVars } from './strategies/scss-vars';
-import { findLessVars } from './strategies/less-vars';
-import { findStylVars } from './strategies/styl-vars';
-import { findCssVars } from './strategies/css-vars';
+import { TextDocument, workspace } from 'vscode';
+
 import { findColorFunctionsInText } from './strategies/functions';
-import { findRgbNoFn } from './strategies/rgbWithoutFunction';
-import { findHslNoFn } from './strategies/hslWithoutFunction';
 import { findHexARGB, findHexRGBA } from './strategies/hex';
+import { findHslNoFn } from './strategies/hslWithoutFunction';
 import { findHwb } from './strategies/hwb';
+import { findRgbNoFn } from './strategies/rgbWithoutFunction';
 import { findWords } from './strategies/words';
-import { DecorationMap } from './lib/decoration-map';
-import { dirname } from 'path';
+import { ColorMapping } from './types';
+import { viewConfig } from './strategies/config';
 
 const colorWordsLanguages = ['css', 'scss', 'sass', 'less', 'stylus'];
 
 export class DocumentColor {
-  /**
-   * Creates an instance of DocumentColor.
-   * @param {TextDocument} document
-   * @param {any} viewConfig
-   *
-   * @memberOf DocumentColor
-   */
-  constructor(document, viewConfig, createInstance) {
+  document: TextDocument;
+  strategies: any[];
+  changed: boolean;
+  disposed: boolean;
+  _createInstance: any;
+  listner: import('vscode').Disposable[];
+
+  constructor(document, createInstance) {
     this.document = document;
     this.strategies = [findColorFunctionsInText, findHwb];
     // 文本是否更新了
@@ -31,9 +27,12 @@ export class DocumentColor {
     // 文本是否删除了
     this.disposed = false;
 
+    this.listner = [];
+
+    // 创建实例
     this._createInstance = createInstance;
 
-    if (viewConfig.useARGB == true) {
+    if (viewConfig.useARGB === true) {
       this.strategies.push(findHexARGB);
     } else {
       this.strategies.push(findHexRGBA);
@@ -98,77 +97,19 @@ export class DocumentColor {
       }
     }
 
-    switch (document.languageId) {
-      case 'css':
-        this.strategies.push(findCssVars);
-        break;
-      case 'less':
-        this.strategies.push(findLessVars);
-        break;
-      case 'stylus':
-        this.strategies.push(findStylVars);
-        break;
-      case 'sass':
-      case 'scss':
-        this.strategies.push((text) =>
-          findScssVars(text, {
-            data: text,
-            cwd: dirname(document.uri.fsPath),
-            extensions: ['.scss', '.sass'],
-            includePaths: viewConfig.sass.includePaths || []
-          })
-        );
-        break;
-    }
-
-    this.initialize(viewConfig);
+    this.initialize();
   }
 
-  initialize(viewConfig) {
-    this.decorations = new DecorationMap(viewConfig);
-
-    this.listner = workspace.onDidChangeTextDocument(({ document }) => {
-      //  新增的文件，如果编辑了，也要统计
-      // BUGFIX: 复制过来的文件或者文件夹，如果没改动，目前无法更新
-      this._createInstance(document);
-
-      // 更新document的变更状态
-      this.changed = true;
-    });
-
-    workspace.onDidDeleteFiles((event) => {
-      event.files.forEach((file) => {
-        if (file.fsPath === this.document.uri.fsPath) {
-          this.disposed = true;
-        }
-      });
-    });
-
-    // 文件新增
-    // workspace.onDidCreateFiles((event) => {
-    //   event.files.forEach(async (file) => {
-
-    //     const document = await vscode.workspace.openTextDocument(file);
-    //     this._createInstance(document);
-
-    //     // if (file.fsPath !== this.document.uri.fsPath) {
-    //     //   console.log('🚀 ~ DocumentColor ~ event.files.forEach ~ file:', file);
-    //     //   // this.new = true;
-    //     //   // this.changed = true;
-    //     //   this._createInstance(this.document);
-
-    //     // }
-    //   });
-    // });
+  initialize() {
+    this.listner.push(
+      workspace.onDidChangeTextDocument(({ document }) => {
+        // 更新document的变更状态
+        this.changed = true;
+      })
+    );
   }
 
-  /**
-   *
-   * @param {TextDocumentChangeEvent} e
-   *
-   * @memberOf DocumentColor
-   */
-  onUpdate(document = this.document) {
+  getColorInfo(document = this.document) {
     if (
       this.disposed ||
       this.document.uri.toString() !== document.uri.toString()
@@ -180,7 +121,7 @@ export class DocumentColor {
     const version = this.document.version.toString();
 
     const file = this.document.uri.fsPath; // file path
-    return this.updateRange(text, version, file);
+    return this.getColorInfoHelper(text, version, file);
   }
 
   /**
@@ -190,7 +131,7 @@ export class DocumentColor {
    *
    * @memberOf DocumentColor
    */
-  async updateRange(text, version, file) {
+  async getColorInfoHelper(text, version, file) {
     try {
       const result = await Promise.all(this.strategies.map((fn) => fn(text)));
 
@@ -200,11 +141,14 @@ export class DocumentColor {
           throw new Error('Document version already has changed');
         }
 
-        return;
+        return {};
       }
 
-      const colorRanges = groupByColor(concatAll(result));
+      // 每个文件的颜色信息，一个颜色值对应的位置等信息
+      // 可能有多个颜色，所以是列表对象
+      const colorRanges: ColorMapping = groupByColor(concatAll(result));
 
+      // 拼接file信息
       for (const colorInfo in colorRanges) {
         const arr = colorRanges[colorInfo];
         colorRanges[colorInfo] = arr.map((item) => ({
@@ -214,7 +158,7 @@ export class DocumentColor {
       }
 
       if (this.disposed) {
-        return false;
+        return {};
       }
 
       return colorRanges;
@@ -225,13 +169,10 @@ export class DocumentColor {
 
   dispose() {
     this.disposed = true;
-    this.decorations.dispose();
-    this.listner.dispose();
+    this.listner.forEach((i) => i.dispose());
 
-    this.decorations = null;
     this.document = null;
-    this.colors = null;
-    this.listner = null;
+    this.listner = [];
   }
 }
 

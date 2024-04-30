@@ -1,19 +1,10 @@
 import * as vscode from 'vscode';
 import { generateMainDiv } from './views';
 import { DocumentColor } from './document-color';
+import path from 'path';
+import { ColorItem, ColorMapping, Config } from './types';
 
-export type ColorItem = {
-  start: number;
-  end: number;
-  color: string;
-  file: string;
-};
-
-export interface ColorMapping {
-  [color: string]: ColorItem[];
-}
-
-class ColorsViewProvider implements vscode.WebviewViewProvider {
+class ViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'color-to-see.colorsView';
 
   private _view?: vscode.WebviewView;
@@ -23,20 +14,24 @@ class ColorsViewProvider implements vscode.WebviewViewProvider {
 
   // 按照文件记录的颜色信息
   public colorMapArray: ColorMapping[] = [];
-  private instanceMap = [];
+  private instanceMap: DocumentColor[] = [];
 
-  constructor(private readonly _extensionUri: vscode.Uri) {}
+  // 插件的配置
+  private config: Config;
+
+  constructor(
+    private readonly _extensionUri: vscode.Uri,
+    config: vscode.WorkspaceConfiguration
+  ) {
+    this.config = config as Config;
+  }
 
   public async resolveWebviewView(
     webviewView: vscode.WebviewView,
-    context: vscode.WebviewViewResolveContext,
+    _,
     _token: vscode.CancellationToken
   ) {
     this._view = webviewView;
-
-    this.colorMapArray = await this.collectColorsInDocuments();
-
-    this.updateColorInfosByMap();
 
     webviewView.webview.options = {
       // Allow scripts in the webview
@@ -44,16 +39,16 @@ class ColorsViewProvider implements vscode.WebviewViewProvider {
       localResourceRoots: [this._extensionUri]
     };
 
-    webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+    this.initDataView();
 
     // 接收点击事件
     webviewView.webview.onDidReceiveMessage((message) => {
       switch (message.command) {
         case 'gotoColor':
-          this.gotoColor(message.file, message.start, message.end);
+          showColorTextDocument(message.file, message.start, message.end);
           break;
         case 'refresh':
-          this.doUpdateColorInfos().finally(() => {
+          this.doUpdateWebView().finally(() => {
             webviewView.webview.postMessage({
               command: 'refreshEnd'
             });
@@ -62,6 +57,23 @@ class ColorsViewProvider implements vscode.WebviewViewProvider {
           break;
       }
     });
+
+    // 文件新增
+    vscode.workspace.onDidCreateFiles(() => {
+      this.initDataView();
+    });
+
+    // 文件删除
+    vscode.workspace.onDidDeleteFiles((event) => {
+      this.initDataView();
+    });
+  }
+
+  private async initDataView() {
+    this.colorMapArray = await this.collectColorsInDocuments();
+    this.colorInfos = updateColorInfosByMap(this.colorMapArray);
+    // webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+    this._view.webview.html = this._getHtmlForWebview(this._view.webview);
   }
 
   public _getHtmlForWebview(webview: vscode.Webview) {
@@ -102,28 +114,13 @@ class ColorsViewProvider implements vscode.WebviewViewProvider {
 			</html>`;
   }
 
-  private gotoColor(file: string, start: number, end: number) {
-    const uri = vscode.Uri.file(file);
-    vscode.workspace.openTextDocument(uri).then((doc) => {
-      vscode.window.showTextDocument(doc).then((editor) => {
-        editor.selection = new vscode.Selection(
-          editor.document.positionAt(start),
-          editor.document.positionAt(end)
-        );
-      });
-    });
-  }
-
-  private updateColorInfosByMap() {
-    this.colorInfos = flatColorItem(this.colorMapArray);
-  }
-
-  private async doUpdateColorInfos() {
+  private async doUpdateWebView() {
     try {
       // 收集变更的document，局部更新颜色视图
       for (let index = 0; index < this.instanceMap.length; index++) {
         const instance = this.instanceMap[index];
 
+        // 如果页面删除了
         if (instance.disposed) {
           // 删除对应的map
           this.instanceMap.splice(index, 1);
@@ -131,15 +128,17 @@ class ColorsViewProvider implements vscode.WebviewViewProvider {
           continue;
         }
 
+        // 如果页面更改了
         if (instance.changed) {
-          const colorDocumentItem = await instance.onUpdate();
+          const colorDocumentItem = await instance.getColorInfo();
           this.colorMapArray[index] = colorDocumentItem;
           // 恢复
           instance.changed = false;
         }
       }
 
-      this.updateColorInfosByMap();
+      // 更新颜色信息
+      this.colorInfos = updateColorInfosByMap(this.colorMapArray);
 
       // 更新视图
       this._view.webview.html = this._getHtmlForWebview(this._view.webview);
@@ -150,36 +149,25 @@ class ColorsViewProvider implements vscode.WebviewViewProvider {
   }
 
   private async collectColorsInDocuments() {
-    const files = await vscode.workspace.findFiles(
-      '**/*',
-      '{**/node_modules/**,src/**/*}'
-    );
-    const colorsInfos = [];
-
+    const files = await findFilesUsingConfig(this.config);
+    console.log('🚀 ~ ViewProvider ~ collectColorsInDocuments ~ files:', files);
+    const colorsInfos: ColorMapping[] = [];
     for (const file of files) {
-      const document = await vscode.workspace.openTextDocument(file);
-      colorsInfos.push(await this.collectColorsInDocument(document));
-    }
+      try {
+        const document = await vscode.workspace.openTextDocument(file);
+        const instance = await this.findOrCreateInstance(document);
 
+        colorsInfos.push(await instance.getColorInfo());
+      } catch {
+        continue;
+      }
+    }
     return colorsInfos;
   }
 
-  private async collectColorsInDocument(document) {
-    if (document) {
-      const instance = await this.findOrCreateInstance(document);
-      return instance.onUpdate();
-    }
-  }
-
-  /**
-   * Finds relevant instance of the DocumentColorer or creates a new one
-   *
-   * @param {vscode.TextDocument} document
-   * @returns {DocumentColor}
-   */
-  public async findOrCreateInstance(document) {
+  public async findOrCreateInstance(document: vscode.TextDocument) {
     if (!document) {
-      return {};
+      return {} as DocumentColor;
     }
 
     const found = this.instanceMap.find(
@@ -189,7 +177,6 @@ class ColorsViewProvider implements vscode.WebviewViewProvider {
     if (!found) {
       const instance = new DocumentColor(
         document,
-        {},
         this.findOrCreateInstance.bind(this)
       );
 
@@ -200,7 +187,9 @@ class ColorsViewProvider implements vscode.WebviewViewProvider {
   }
 }
 
-function getNonce() {
+export default ViewProvider;
+
+const getNonce = () => {
   let text = '';
   const possible =
     'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -208,7 +197,7 @@ function getNonce() {
     text += possible.charAt(Math.floor(Math.random() * possible.length));
   }
   return text;
-}
+};
 
 const flatColorItem = (colorList: ColorMapping[]) => {
   let flatData: ColorItem[] = [];
@@ -229,4 +218,37 @@ const flatColorItem = (colorList: ColorMapping[]) => {
   return flatData;
 };
 
-export default ColorsViewProvider;
+/** 根据颜色信息，打开对应的文档，并选中颜色位置 */
+const showColorTextDocument = (file: string, start: number, end: number) => {
+  const uri = vscode.Uri.file(file);
+  vscode.workspace.openTextDocument(uri).then((doc) => {
+    vscode.window.showTextDocument(doc).then((editor) => {
+      editor.selection = new vscode.Selection(
+        editor.document.positionAt(start),
+        editor.document.positionAt(end)
+      );
+    });
+  });
+};
+
+const findFilesUsingConfig = async (config: Config) => {
+  const { include, exclude } = config.findFilesRules;
+  const includePattern = `{${include.join(',')}}`;
+  const excludePattern = `{${exclude.join(',')}}`;
+
+  try {
+    const files = await vscode.workspace.findFiles(
+      includePattern,
+      excludePattern
+    );
+    console.log('🚀 ~ findFilesUsingConfig ~ files:', files);
+    return files;
+  } catch (err) {
+    // 监控上报
+    return [];
+  }
+};
+
+const updateColorInfosByMap = (colorMapArray: ColorMapping[]) => {
+  return flatColorItem(colorMapArray);
+};

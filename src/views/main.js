@@ -54,7 +54,7 @@
   selectedColorDiv.addEventListener('click', (el) => {
     const value = el.target.innerText;
     navigator.clipboard.writeText(value).then(() => {
-      showAlert({ text: 'Copied to clipboard' });
+      showAlert({ text: '已复制剪切板！' });
     });
   });
 

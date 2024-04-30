@@ -37,76 +37,49 @@
       ]
     },
     "configuration": {
-      "title": "Color Highlight",
+      "title": "Color To See",
       "properties": {
         "color-to-see.enable": {
           "default": true,
           "description": "Controls if plugin is enabled",
           "type": "boolean"
         },
-        "color-to-see.languages": {
-          "default": [
-            "*"
-          ],
-          "description": "An array of language ids which should be highlighted by Color Highlight. \"*\" to trigger on any language; Prepend language id with \"!\" to exclude the language (i.e \"!typescript\", \"!javascript\")",
-          "type": "array"
-        },
-        "color-to-see.matchWords": {
-          "default": false,
-          "description": "Highlight color words in all files (grey, green, etc.)",
-          "type": "boolean"
-        },
-        "color-to-see.useARGB": {
-          "default": false,
-          "description": "Highlight HEX values using ARGB instead of RGBA (default)",
-          "type": "boolean"
-        },
-        "color-to-see.matchRgbWithNoFunction": {
-          "default": false,
-          "description": "Highlight rgb without functions like rgb() ('255, 255, 255', [255, 255, 255], '255 255 255', etc.)",
-          "type": "boolean"
-        },
-        "color-to-see.rgbWithNoFunctionLanguages": {
-          "default": [
-            "*"
-          ],
-          "description": "An array of language ids which should be highlighted by Color Highlight with the rgbWithNoFunction pattern. \"*\" to trigger on any language; Prepend language id with \"!\" to exclude the language (i.e \"!typescript\", \"!javascript\")",
-          "type": "array"
-        },
-        "color-to-see.matchHslWithNoFunction": {
-          "default": false,
-          "description": "Highlight hsl without functions like hsl() ('255, 100%, 80%', [255, 100%, 80%], '255 100% 80%', etc.)",
-          "type": "boolean"
-        },
-        "color-to-see.hslWithNoFunctionLanguages": {
-          "default": [
-            "*"
-          ],
-          "description": "An array of language ids which should be highlighted by Color Highlight with the rgbWithNoFunction pattern. \"*\" to trigger on any language; Prepend language id with \"!\" to exclude the language (i.e \"!typescript\", \"!javascript\")",
-          "type": "array"
-        },
-        "color-to-see.markerType": {
-          "default": "background",
-          "description": "Style of the highlight. Can be 'dot-before', 'dot-after', 'foreground', 'background', 'outline', 'underline'",
-          "type": "string",
-          "enum": [
-            "dot-before",
-            "dot-after",
-            "foreground",
-            "background",
-            "outline",
-            "underline"
-          ]
-        },
-        "color-to-see.markRuler": {
-          "default": true,
-          "description": "Highlight colors on the ruler (scroll bar), true/false",
-          "type": "boolean"
-        },
-        "color-to-see.sass.includePaths": {
-          "default": [],
-          "description": "Array of absolute paths to search while perform file lookups.",
-          "type": "array"
+        "color-to-see.findFilesRules": {
+          "default": {
+            "include": [
+              "**/*"
+            ],
+            "exclude": [
+              "**/node_modules/**",
+              "**/dist/**",
+              ".git",
+              "**/dist/**",
+              "**/*.png",
+              "**/*.jpg",
+              "**/*.jpeg",
+              "**/*.gif",
+              "**/*.bmp",
+              "**/*.svg"
+            ]
+          },
+          "type": "object",
+          "properties": {
+            "include": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "List of glob patterns to include."
+            },
+            "exclude": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "List of glob patterns to exclude."
+            }
+          },
+          "description": "Defines rules to include and exclude files."
         }
       }
     }
