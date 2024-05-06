@@ -46,6 +46,11 @@
 
   // 刷新
   refreshBtn.addEventListener('click', () => {
+    // 如果已经在Loading, 无需发送message
+    if (refreshBtn.classList.contains('btn--loading')) {
+      return;
+    }
+
     refreshBtn.classList.add('btn--loading');
     vscode.postMessage({ command: 'refresh' });
   });

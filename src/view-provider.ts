@@ -4,7 +4,7 @@ import { DocumentColor } from './document-color';
 import { ColorItem, ColorMapping, Config, OperationType } from './types';
 
 class ViewProvider implements vscode.WebviewViewProvider {
-  public static readonly viewType = 'color-to-see.colorsView';
+  public static readonly viewType = 'view.colorToSee';
 
   public _view?: vscode.WebviewView;
 
@@ -22,6 +22,9 @@ class ViewProvider implements vscode.WebviewViewProvider {
 
   // 操作类型
   private type: OperationType = 'change'; // init | add | delete | change
+
+  // 是否操作过了：新增、删除、编辑
+  private didOperated = false;
 
   constructor(
     private readonly _extensionUri: vscode.Uri,
@@ -52,7 +55,13 @@ class ViewProvider implements vscode.WebviewViewProvider {
           showColorTextDocument(message.file, message.start, message.end);
           break;
         case 'refresh':
-          this.doUpdateWebView().finally(() => {
+          // 如果没操作，无需updateView
+          const prom = this.didOperated
+            ? () => this.doUpdateWebView()
+            : () => Promise.resolve();
+
+          prom().finally(() => {
+            this.didOperated = false;
             webviewView.webview.postMessage({
               command: 'refreshEnd'
             });
@@ -199,6 +208,9 @@ class ViewProvider implements vscode.WebviewViewProvider {
   }
   private updateType(v: OperationType) {
     this.type = v;
+    if (v !== 'init') {
+      this.didOperated = true;
+    }
   }
 }
 

@@ -38,14 +38,14 @@ const dropDownSelector = () => `
 
 const refreshBtn = () => `
 <div class="refresh-btn-container">
-  <a class="btn">
+  <div class="btn">
       点击刷新
       <span>
           <b></b>
           <b></b>
           <b></b>
       </span>
-  </a>
+  </div>
 </div>
 `;
 
@@ -64,13 +64,12 @@ const emptyContent = () => {
 
 export const blankLoadingContent = () => {
   return `<div class="refresh-btn-container">
-  <a class="btn btn--loading">
-  11111
+  <div class="btn btn--loading">
       <span>
           <b></b>
           <b></b>
           <b></b>
       </span>
-  </a>
+  </div>
 </div>`;
 };

@@ -95,6 +95,9 @@ body {
       justify-content: center;
       padding: 10px 0;
     }
+    .btn:hover {
+      cursor: pointer;
+    }
 
     .btn b {
       font-weight: normal;
@@ -106,6 +109,7 @@ body {
 
     .btn.btn--loading {
       font-size: 0;
+      cursor: text;
     }
 
     .btn.btn--loading span {

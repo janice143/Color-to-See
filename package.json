@@ -14,36 +14,13 @@
   "contributes": {
     "commands": [
       {
-        "command": "color-to-see.helloWorld",
-        "title": "Hello World"
+        "command": "extension.colorToSee",
+        "title": "ColorToSee: Show color grid webview panel in a distinct editor"
       }
     ],
-    "viewsContainers": {
-      "activitybar": [
-        {
-          "id": "myWebviewContainer",
-          "title": "My Webview",
-          "icon": "assets/icon.svg"
-        }
-      ]
-    },
-    "views": {
-      "myWebviewContainer": [
-        {
-          "type": "webview",
-          "id": "color-to-see.colorsView",
-          "name": "颜色盘"
-        }
-      ]
-    },
     "configuration": {
       "title": "Color To See",
       "properties": {
-        "color-to-see.enable": {
-          "default": true,
-          "description": "Controls if plugin is enabled",
-          "type": "boolean"
-        },
         "color-to-see.findFilesRules": {
           "default": {
             "include": [
