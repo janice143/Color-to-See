@@ -4,7 +4,7 @@
   "displayName": "Color to See",
   "license": "MIT",
   "description": "Show colors of the working directory in a webview panel",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "engines": {
     "vscode": "^1.87.0"
   },
