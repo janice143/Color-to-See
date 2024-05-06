@@ -1,12 +1,12 @@
 import * as vscode from 'vscode';
-import { generateMainDiv } from './views';
+import { blankLoadingContent, generateMainDiv } from './views';
 import { DocumentColor } from './document-color';
 import { ColorItem, ColorMapping, Config, OperationType } from './types';
 
 class ViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'color-to-see.colorsView';
 
-  private _view?: vscode.WebviewView;
+  public _view?: vscode.WebviewView;
 
   // 平铺的颜色信息
   private colorInfos: ColorItem[] = [];
@@ -30,11 +30,7 @@ class ViewProvider implements vscode.WebviewViewProvider {
     this.config = config as Config;
   }
 
-  public async resolveWebviewView(
-    webviewView: vscode.WebviewView,
-    _,
-    _token: vscode.CancellationToken
-  ) {
+  public async resolveWebviewView(webviewView: vscode.WebviewView) {
     this._view = webviewView;
 
     webviewView.webview.options = {
@@ -42,6 +38,9 @@ class ViewProvider implements vscode.WebviewViewProvider {
       enableScripts: true,
       localResourceRoots: [this._extensionUri]
     };
+
+    // 初始化空白的页面：
+    this._view.webview.html = this._getHtmlForWebview(this._view.webview, true);
 
     this.updateType('init');
     this.doUpdateWebView();
@@ -74,7 +73,10 @@ class ViewProvider implements vscode.WebviewViewProvider {
     });
   }
 
-  public _getHtmlForWebview(webview: vscode.Webview) {
+  private _getHtmlForWebview(
+    webview: vscode.Webview,
+    firstLoading: boolean = false
+  ) {
     // Get the local path to main script run in the webview, then convert it to a uri we can use in the webview.
     const scriptUri = webview.asWebviewUri(
       vscode.Uri.joinPath(this._extensionUri, 'src/views', 'main.js')
@@ -106,7 +108,11 @@ class ViewProvider implements vscode.WebviewViewProvider {
 				<title>颜色盘</title>
 			</head>
 			<body>
-        ${generateMainDiv(this.colorInfos)}
+        ${
+          firstLoading
+            ? blankLoadingContent()
+            : generateMainDiv(this.colorInfos)
+        }
 				<script nonce="${nonce}" src="${scriptUri}"></script>
 			</body>
 			</html>`;
@@ -120,6 +126,7 @@ class ViewProvider implements vscode.WebviewViewProvider {
         this.type === 'delete'
       ) {
         await this.initDataView();
+
         return Promise.resolve();
       }
 
@@ -143,6 +150,7 @@ class ViewProvider implements vscode.WebviewViewProvider {
 
       // 更新视图
       this._view.webview.html = this._getHtmlForWebview(this._view.webview);
+
       return Promise.resolve();
     } catch {
       return Promise.reject();
@@ -153,7 +161,6 @@ class ViewProvider implements vscode.WebviewViewProvider {
     this.instanceMap = [];
     this.colorMapArray = await this.collectColorsInDocuments();
     this.colorInfos = updateColorInfosByMap(this.colorMapArray);
-    // webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
     this._view.webview.html = this._getHtmlForWebview(this._view.webview);
   }
 

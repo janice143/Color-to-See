@@ -61,3 +61,16 @@ const emptyContent = () => {
   <span class="text">没有找到颜色~</span>
   </div>`;
 };
+
+export const blankLoadingContent = () => {
+  return `<div class="refresh-btn-container">
+  <a class="btn btn--loading">
+  11111
+      <span>
+          <b></b>
+          <b></b>
+          <b></b>
+      </span>
+  </a>
+</div>`;
+};
