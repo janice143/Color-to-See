@@ -38,3 +38,5 @@ export interface Config {
   };
   enable?: boolean;
 }
+
+export type OperationType = 'init' | 'add' | 'delete' | 'change';

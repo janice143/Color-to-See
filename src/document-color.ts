@@ -6,7 +6,7 @@ import { findHslNoFn } from './strategies/hslWithoutFunction';
 import { findHwb } from './strategies/hwb';
 import { findRgbNoFn } from './strategies/rgbWithoutFunction';
 import { findWords } from './strategies/words';
-import { ColorMapping } from './types';
+import { ColorMapping, OperationType } from './types';
 import { viewConfig } from './strategies/config';
 
 const colorWordsLanguages = ['css', 'scss', 'sass', 'less', 'stylus'];
@@ -16,21 +16,22 @@ export class DocumentColor {
   strategies: any[];
   changed: boolean;
   disposed: boolean;
-  _createInstance: any;
   listner: import('vscode').Disposable[];
+  _updateType: (v: OperationType) => void;
 
-  constructor(document, createInstance) {
+  constructor(document, updateType) {
     this.document = document;
     this.strategies = [findColorFunctionsInText, findHwb];
     // 文本是否更新了
     this.changed = false;
+
     // 文本是否删除了
     this.disposed = false;
 
     this.listner = [];
 
     // 创建实例
-    this._createInstance = createInstance;
+    this._updateType = updateType;
 
     if (viewConfig.useARGB === true) {
       this.strategies.push(findHexARGB);
@@ -105,6 +106,7 @@ export class DocumentColor {
       workspace.onDidChangeTextDocument(({ document }) => {
         // 更新document的变更状态
         this.changed = true;
+        this._updateType('change');
       })
     );
   }

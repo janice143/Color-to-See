@@ -53,9 +53,11 @@
   // 色值复制
   selectedColorDiv.addEventListener('click', (el) => {
     const value = el.target.innerText;
-    navigator.clipboard.writeText(value).then(() => {
-      showAlert({ text: '已复制剪切板！' });
-    });
+    if (value) {
+      navigator.clipboard.writeText(value).then(() => {
+        showAlert({ text: '已复制剪切板！' });
+      });
+    }
   });
 
   window.addEventListener('message', (event) => {

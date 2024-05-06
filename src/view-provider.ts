@@ -1,8 +1,7 @@
 import * as vscode from 'vscode';
 import { generateMainDiv } from './views';
 import { DocumentColor } from './document-color';
-import path from 'path';
-import { ColorItem, ColorMapping, Config } from './types';
+import { ColorItem, ColorMapping, Config, OperationType } from './types';
 
 class ViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'color-to-see.colorsView';
@@ -10,14 +9,19 @@ class ViewProvider implements vscode.WebviewViewProvider {
   private _view?: vscode.WebviewView;
 
   // 平铺的颜色信息
-  public colorInfos: ColorItem[] = [];
+  private colorInfos: ColorItem[] = [];
 
   // 按照文件记录的颜色信息
-  public colorMapArray: ColorMapping[] = [];
-  private instanceMap: DocumentColor[] = [];
+  private colorMapArray: ColorMapping[] = [];
+
+  // 文档实例
+  public instanceMap: DocumentColor[] = [];
 
   // 插件的配置
   private config: Config;
+
+  // 操作类型
+  private type: OperationType = 'change'; // init | add | delete | change
 
   constructor(
     private readonly _extensionUri: vscode.Uri,
@@ -39,7 +43,8 @@ class ViewProvider implements vscode.WebviewViewProvider {
       localResourceRoots: [this._extensionUri]
     };
 
-    this.initDataView();
+    this.updateType('init');
+    this.doUpdateWebView();
 
     // 接收点击事件
     webviewView.webview.onDidReceiveMessage((message) => {
@@ -60,20 +65,13 @@ class ViewProvider implements vscode.WebviewViewProvider {
 
     // 文件新增
     vscode.workspace.onDidCreateFiles(() => {
-      this.initDataView();
+      this.updateType('add');
     });
 
     // 文件删除
     vscode.workspace.onDidDeleteFiles((event) => {
-      this.initDataView();
+      this.updateType('delete');
     });
-  }
-
-  private async initDataView() {
-    this.colorMapArray = await this.collectColorsInDocuments();
-    this.colorInfos = updateColorInfosByMap(this.colorMapArray);
-    // webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
-    this._view.webview.html = this._getHtmlForWebview(this._view.webview);
   }
 
   public _getHtmlForWebview(webview: vscode.Webview) {
@@ -116,17 +114,20 @@ class ViewProvider implements vscode.WebviewViewProvider {
 
   private async doUpdateWebView() {
     try {
+      if (
+        this.type === 'init' ||
+        this.type === 'add' ||
+        this.type === 'delete'
+      ) {
+        await this.initDataView();
+        return Promise.resolve();
+      }
+
+      // 颜色变更： text change
+
       // 收集变更的document，局部更新颜色视图
       for (let index = 0; index < this.instanceMap.length; index++) {
         const instance = this.instanceMap[index];
-
-        // 如果页面删除了
-        if (instance.disposed) {
-          // 删除对应的map
-          this.instanceMap.splice(index, 1);
-          this.colorMapArray.splice(index, 1);
-          continue;
-        }
 
         // 如果页面更改了
         if (instance.changed) {
@@ -148,9 +149,16 @@ class ViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
+  private async initDataView() {
+    this.instanceMap = [];
+    this.colorMapArray = await this.collectColorsInDocuments();
+    this.colorInfos = updateColorInfosByMap(this.colorMapArray);
+    // webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+    this._view.webview.html = this._getHtmlForWebview(this._view.webview);
+  }
+
   private async collectColorsInDocuments() {
     const files = await findFilesUsingConfig(this.config);
-    console.log('🚀 ~ ViewProvider ~ collectColorsInDocuments ~ files:', files);
     const colorsInfos: ColorMapping[] = [];
     for (const file of files) {
       try {
@@ -175,15 +183,15 @@ class ViewProvider implements vscode.WebviewViewProvider {
     );
 
     if (!found) {
-      const instance = new DocumentColor(
-        document,
-        this.findOrCreateInstance.bind(this)
-      );
+      const instance = new DocumentColor(document, this.updateType.bind(this));
 
       this.instanceMap.push(instance);
     }
 
     return found || this.instanceMap[this.instanceMap.length - 1];
+  }
+  private updateType(v: OperationType) {
+    this.type = v;
   }
 }
 
@@ -241,10 +249,8 @@ const findFilesUsingConfig = async (config: Config) => {
       includePattern,
       excludePattern
     );
-    console.log('🚀 ~ findFilesUsingConfig ~ files:', files);
     return files;
-  } catch (err) {
-    // 监控上报
+  } catch {
     return [];
   }
 };

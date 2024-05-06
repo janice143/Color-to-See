@@ -56,5 +56,8 @@ ${div}
 `;
 
 const emptyContent = () => {
-  return '项目中没有颜色~';
+  return `<div class="empty-content">
+  <span>￣_(ツ)_/￣</span>
+  <span class="text">没有找到颜色~</span>
+  </div>`;
 };

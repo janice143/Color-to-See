@@ -40,7 +40,7 @@
       "title": "Color To See",
       "properties": {
         "color-to-see.enable": {
-          "default": true,
+          "default": false,
           "description": "Controls if plugin is enabled",
           "type": "boolean"
         },
