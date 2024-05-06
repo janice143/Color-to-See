@@ -7,7 +7,7 @@ let config: vscode.WorkspaceConfiguration;
 let instanceMap: DocumentColor[] = [];
 
 const COMMAND_NAME = 'extension.colorToSee';
-const PANEL_TITLE = 'Color To See';
+const PANEL_TITLE = '🌈 👀 Color To See';
 const EXTENSION_NAME = 'color-to-see';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -28,7 +28,9 @@ const registerWebviewViewProvider = (context: vscode.ExtensionContext) => {
     ViewProvider.viewType, // Webview 的标识符
     PANEL_TITLE, // 面板标题
     vscode.ViewColumn.One, // 面板显示在哪个编辑器列中
-    { enableScripts: true } // 额外的 Webview 选项
+    {
+      enableScripts: true
+    } // 额外的 Webview 选项
   );
 
   provider.resolveWebviewView(panel as unknown as vscode.WebviewView);
