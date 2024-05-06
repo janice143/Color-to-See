@@ -1,10 +1,17 @@
 {
   "name": "color-to-see",
+  "publisher": "lanyanping",
   "displayName": "Color to See",
-  "description": "show all the color of the working directory",
+  "license": "MIT",
+  "description": "Show colors of the working directory in a webview panel",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.87.0"
+  },
+  "icon": "assets/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/janice143/Color-to-See"
   },
   "categories": [
     "Other"
@@ -15,7 +22,7 @@
     "commands": [
       {
         "command": "extension.colorToSee",
-        "title": "ColorToSee: Show color grid webview panel in a distinct editor"
+        "title": "ColorToSee: Show colors of the working directory in a webview panel"
       }
     ],
     "configuration": {
